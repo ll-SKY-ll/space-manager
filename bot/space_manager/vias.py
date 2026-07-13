@@ -25,6 +25,10 @@ from mautrix.types import EventType, RoomID, UserID
 MAX_VIAS = 3
 MIN_PL_FOR_FIRST_CANDIDATE = 50
 
+# mautrix's EventType has no predefined constant for m.room.server_acl,
+# so construct it by name (registered as a state event type).
+SERVER_ACL_EVENT = EventType.find("m.room.server_acl", EventType.Class.STATE)
+
 
 def _server_of(user_id: str) -> Optional[str]:
     _, _, server = user_id.partition(":")
@@ -65,7 +69,12 @@ def rank_servers(
 ) -> List[str]:
     """Rank candidate via servers per the spec's routing recommendation."""
     def eligible(server: Optional[str]) -> bool:
-        return bool(server) and not is_ip_literal(server) and _acl_allows(server, server_acl)
+        return (
+            bool(server)
+            and "." in server  # real server names contain at least one dot
+            and not is_ip_literal(server)
+            and _acl_allows(server, server_acl)
+        )
 
     result: List[str] = []
 
@@ -107,7 +116,7 @@ async def pick_vias(client: Client, room_id: RoomID, limit: int = MAX_VIAS) -> L
 
     server_acl: Optional[dict] = None
     try:
-        acl_content = await client.get_state_event(room_id, EventType.ROOM_SERVER_ACL)
+        acl_content = await client.get_state_event(room_id, SERVER_ACL_EVENT)
         server_acl = acl_content.serialize() if hasattr(acl_content, "serialize") else acl_content
     except (MNotFound, MatrixRequestError):
         pass  # No ACL in the room.

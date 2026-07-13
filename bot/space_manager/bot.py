@@ -171,6 +171,20 @@ class SpaceManagerBot(Plugin):
                 return
         else:
             vias = space_config.vias
+            if space_config.invalid_vias or not vias:
+                await self._leave_transient(child_id, was_member)
+                detail = (
+                    f"invalid via server names in config: "
+                    f"{', '.join(space_config.invalid_vias)}"
+                    if space_config.invalid_vias
+                    else "no via servers configured"
+                )
+                await self._fail(
+                    evt, action, child_id, space_id,
+                    f"{detail} — server names must contain a dot, "
+                    f"or set `vias: auto`",
+                )
+                return
         content = {"via": vias}
         try:
             await self.client.send_state_event(
@@ -253,7 +267,10 @@ class SpaceManagerBot(Plugin):
     async def _is_existing_child(self, space_id: RoomID, child_id: RoomID) -> bool:
         """Whether the space already has a live m.space.child for child_id.
 
-        An event with empty content counts as *removed*, i.e. not a child.
+        Per spec, a child event without a valid (non-empty) `via` is not a
+        child — that covers both removed children (empty content) and typed
+        deserialization artifacts where default fields like `suggested`
+        survive serialization even though the event content was empty.
         """
         try:
             content = await self.client.get_state_event(
@@ -267,7 +284,7 @@ class SpaceManagerBot(Plugin):
             self.log.warning(f"Could not check existing children of {space_id}: {e}")
             return False
         serialized = content.serialize() if hasattr(content, "serialize") else content
-        return bool(serialized)
+        return bool(serialized.get("via"))
 
     async def _validate_request(
         self, evt: MessageEvent, child_id: RoomID, space_id: RoomID

@@ -68,10 +68,12 @@ async def _check_no_space_children(client: Client, room_id: RoomID) -> None:
     for evt in state:
         if evt.type != EventType.SPACE_CHILD:
             continue
-        # An m.space.child event with empty content is a *removed* child and
-        # therefore harmless — only non-empty content counts.
+        # Only a *live* child counts: per spec, an m.space.child event
+        # without a non-empty `via` is not a child. This also covers typed
+        # deserialization artifacts where default fields (e.g. `suggested`)
+        # survive serialization even though the event content was empty.
         content = evt.content.serialize() if hasattr(evt.content, "serialize") else evt.content
-        if content:
+        if content and content.get("via"):
             raise RoomValidationError(
                 f"{room_id} contains an `m.space.child` state event "
                 f"(child: `{evt.state_key}`), which makes it act like a "
