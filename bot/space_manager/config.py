@@ -17,16 +17,36 @@ class SpacePermission:
     room: RoomID
     vias: List[str]
     vias_auto: bool
+    invalid_vias: List[str]
     allowed_editors: List[UserID]
 
     @classmethod
     def from_dict(cls, raw: dict) -> "SpacePermission":
         raw_vias = raw.get("vias")
-        vias_auto = isinstance(raw_vias, str) and raw_vias.strip().lower() == "auto"
+
+        # Accept 'auto' both as a bare string (vias: auto) and as a list
+        # entry (vias: [auto]) — the latter is an easy YAML mistake to make
+        # and must never end up as a literal via server called "auto".
+        if isinstance(raw_vias, str):
+            vias_auto = raw_vias.strip().lower() == "auto"
+            entries = [] if vias_auto else [raw_vias]
+        else:
+            entries = [str(v) for v in (raw_vias or [])]
+            vias_auto = any(v.strip().lower() == "auto" for v in entries)
+            if vias_auto:
+                entries = []
+
+        # A valid server name contains at least one dot (this also rejects
+        # stray words like "auto"). Invalid entries are kept separately so
+        # the bot can report them instead of silently writing garbage vias.
+        vias = [v for v in entries if "." in v]
+        invalid_vias = [v for v in entries if "." not in v]
+
         return cls(
             room=RoomID(raw.get("room", "")),
-            vias=[] if vias_auto else list(raw_vias or []),
+            vias=vias,
             vias_auto=vias_auto,
+            invalid_vias=invalid_vias,
             allowed_editors=[UserID(u) for u in (raw.get("allowed_editors") or [])],
         )
 
