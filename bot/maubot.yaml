@@ -1,0 +1,15 @@
+maubot: 0.1.0
+id: net.codestorm.space-manager
+version: 0.1.0
+license: MIT
+
+modules:
+  - space_manager
+main_class: SpaceManagerBot
+
+extra_files:
+  - base-config.yaml
+
+config: true
+
+database: false

@@ -1,0 +1,63 @@
+# Invite policy (evaluated like m.room.server_acl, but for user IDs):
+#   * Glob patterns are supported: `*` matches any sequence of characters,
+#     `?` matches a single character.
+#   * The deny list ALWAYS wins — a sender matching any deny pattern is
+#     rejected even if they also match an allow pattern.
+#   * A sender must match at least one allow pattern to be accepted.
+#     An empty allow list therefore rejects everyone.
+invites:
+  allow:
+    - '*'
+  deny: []
+  # Example — only your homeserver, minus one troublemaker:
+  # allow:
+  #   - '@*:codestorm.net'
+  # deny:
+  #   - '@spammer:codestorm.net'
+
+# Room ID of a room where the bot posts m.notice messages about every
+# successful addition/removal and every failed attempt. The bot must be
+# a member of this room. Leave empty ('') to disable notifications.
+notification_room: ''
+
+# Servers to pass as routing hints when the bot joins child rooms for
+# inspection. Joining by bare room ID only works if the bot's homeserver
+# already knows the room — for federated joins, list one or more servers
+# that are likely to be in the rooms (e.g. your own homeserver's name).
+join_vias:
+  - 'codestorm.net'
+
+# Users that may manage *every* configured space through the bot.
+# Note: even instance admins can only touch spaces that are listed under
+# `permissions` below — unconfigured spaces are always rejected.
+instance_admins:
+  - '@superadmin1:example.org'
+  - '@superadmin2:example.org'
+
+# Per-space permission map.
+#   room:            The room ID of the space the bot manages.
+#   vias:            Servers to put into the `via` field of m.space.child
+#                    events created by the bot. Set to the string 'auto'
+#                    to let the bot pick up to 3 servers per the spec's
+#                    routing recommendation (highest-PL user's server,
+#                    then most populous servers; skipping ACL-denied
+#                    servers and IP literals), computed from the child
+#                    room's members at the time of addition.
+#   allowed_editors: Users that may add/remove children of this space.
+permissions:
+  - room: '!room_ID_example:example.org'
+    vias:
+      - 'matrix.org'
+      - 'element.io'
+    allowed_editors:
+      - '@sky:codestorm.net'
+      - '@admin2:codestorm.net'
+      - '@admin3:codestorm.net'
+
+  - room: '!room_ID_example:example.org'
+    vias:
+      - 'auto'
+    allowed_editors:
+      - '@sky:codestorm.net'
+      - '@admin2:codestorm.net'
+      - '@admin3:codestorm.net'
